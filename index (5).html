@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ISL · Gestión de Extintores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f2ed;
+    --surface:#ffffff;
+    --surface-2:#ece9e1;
+    --border:#dad5c9;
+    --text:#22262b;
+    --text-dim:#6c7278;
+    --red:#c81e2c;
+    --red-strong:#a11220;
+    --red-bg:#fbe3e5;
+    --amber:#c98a12;
+    --amber-strong:#8a5b08;
+    --amber-bg:#fcefd7;
+    --green:#2e8b57;
+    --green-strong:#1e6e43;
+    --green-bg:#e3f3ea;
+    --blue:#2f6fb0;
+    --blue-strong:#1f567f;
+    --blue-bg:#e7f1fb;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+  h1,h2,h3,.display{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  a{color:inherit;}
+
+  header.top{
+    position:sticky;top:0;z-index:20;
+    background:var(--surface);border-bottom:2px solid var(--red);
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 1px 6px rgba(30,25,15,.05);
+  }
+  header.top .brand{display:flex;align-items:center;gap:10px;}
+  header.top .logo{height:34px;width:auto;display:block;}
+  header.top .brand-text{display:flex;flex-direction:column;line-height:1;}
+  header.top .brand-text small{font-family:'Inter';text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:11px;margin-top:3px;}
+  header.top .brand-text .name{font-size:19px;font-weight:600;}
+  header.top .brand-text .name span{color:var(--red);}
+  .role-switch{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);
+    font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;
+  }
+
+  #role-gate{
+    position:fixed;inset:0;z-index:100;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .gate-card{width:100%;max-width:360px;}
+  .gate-card .gate-logo{display:block;height:56px;width:auto;margin:0 auto 14px;}
+  .gate-title{font-family:'Oswald';font-size:24px;font-weight:600;text-transform:uppercase;text-align:center;margin-bottom:6px;}
+  .gate-title span{color:var(--red);}
+  .gate-sub{font-size:13px;color:var(--text-dim);text-align:center;margin-bottom:22px;}
+  .role-btn{
+    width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:16px;margin-bottom:12px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+    text-align:left;box-shadow:0 1px 4px rgba(30,25,15,.04);
+  }
+  .role-btn:active{border-color:var(--red);}
+  .role-btn .rb-title{font-family:'Oswald';font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+  .role-btn .rb-desc{font-size:12px;color:var(--text-dim);}
+
+  #alert-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  #alert-banner.vencido{background:var(--red-bg);color:var(--red-strong);border-bottom:1px solid var(--red);}
+  #alert-banner.critico{background:var(--amber-bg);color:var(--amber-strong);border-bottom:1px solid var(--amber);}
+  #alert-banner .arrow{opacity:.7;}
+
+  main{padding:16px;padding-bottom:90px;max-width:640px;margin:0 auto;}
+
+  nav.tabs{
+    position:fixed;bottom:0;left:0;right:0;z-index:30;
+    background:var(--surface);border-top:1px solid var(--border);
+    display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow:0 -1px 6px rgba(30,25,15,.05);
+  }
+  nav.tabs button{
+    background:none;border:none;color:var(--text-dim);font-family:'Inter';
+    font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:6px 10px;border-radius:8px;
+  }
+  nav.tabs button .icon{font-size:19px;}
+  nav.tabs button.active{color:var(--red);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(30,25,15,.04);}
+  .section-title{font-size:14px;color:var(--text-dim);margin:22px 0 10px;font-weight:600;letter-spacing:.08em;}
+  .section-title:first-child{margin-top:0;}
+
+  /* ---- Signature element: tarjeta de inspección ---- */
+  .tag{
+    position:relative;background:var(--surface);border:1px solid var(--border);
+    border-radius:6px;padding:12px 14px 12px 46px;margin-bottom:10px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border-left:4px solid var(--border);box-shadow:0 1px 4px rgba(30,25,15,.04);
+  }
+  .tag::before{
+    content:'';position:absolute;left:16px;top:50%;transform:translateY(-50%);
+    width:8px;height:8px;border-radius:50%;background:var(--bg);border:2px solid var(--text-dim);
+  }
+  .tag.vencido{border-left-color:var(--red);}
+  .tag.critico{border-left-color:var(--amber);}
+  .tag.proximo{border-left-color:var(--blue);}
+  .tag .info .codigo{font-family:'IBM Plex Mono';font-size:14px;font-weight:600;}
+  .tag .info .loc{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .tag .badge{
+    font-family:'Oswald';font-size:20px;font-weight:600;text-align:center;min-width:52px;
+    padding:4px 6px;border-radius:6px;line-height:1.1;
+  }
+  .tag .badge small{display:block;font-family:'Inter';font-size:9px;font-weight:600;text-transform:uppercase;color:var(--text-dim);}
+  .tag.vencido .badge{background:var(--red-bg);color:var(--red-strong);}
+  .tag.critico .badge{background:var(--amber-bg);color:var(--amber-strong);}
+  .tag.proximo .badge{background:var(--blue-bg);color:var(--blue-strong);}
+
+  .stat-row{display:flex;gap:10px;margin-bottom:4px;}
+  .stat{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:0 1px 4px rgba(30,25,15,.04);}
+  .stat .n{font-family:'Oswald';font-size:26px;font-weight:600;}
+  .stat .l{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+  .stat.red .n{color:var(--red);}
+
+  label{display:block;font-size:12px;color:var(--text-dim);margin:12px 0 5px;font-weight:600;}
+  input,select,textarea{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:11px 12px;font-size:15px;font-family:'Inter';
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--red);outline-offset:-1px;}
+  textarea{min-height:70px;resize:vertical;}
+
+  button.primary{
+    width:100%;background:var(--red);color:#fff;border:none;border-radius:8px;
+    padding:14px;font-family:'Oswald';font-size:15px;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;margin-top:18px;
+  }
+  button.primary:active{background:var(--red-strong);}
+  button.secondary{
+    width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:12px;font-family:'Inter';font-size:14px;font-weight:600;margin-top:8px;
+  }
+
+  .checklist-item{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 2px;border-bottom:1px solid var(--border);
+  }
+  .checklist-item:last-child{border-bottom:none;}
+  .checklist-item .lbl{font-size:14px;}
+  .toggle{display:flex;gap:6px;}
+  .toggle button{
+    border:1px solid var(--border);background:var(--surface-2);color:var(--text-dim);
+    border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;
+  }
+  .toggle button.on-ok{background:var(--green-bg);border-color:var(--green);color:var(--green-strong);}
+  .toggle button.on-fail{background:var(--red-bg);border-color:var(--red);color:var(--red-strong);}
+
+  .list-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 4px;border-bottom:1px solid var(--border);
+    cursor:pointer;
+  }
+  .list-item:last-child{border-bottom:none;}
+  .list-item:active{background:var(--surface-2);}
+  .list-item .codigo{font-family:'IBM Plex Mono';font-weight:600;font-size:14px;}
+  .list-item .meta{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .pill{font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;}
+  .pill.Operativo{background:var(--green-bg);color:var(--green-strong);}
+  .pill.Baja{background:var(--red-bg);color:var(--red-strong);}
+  .pill.EnRecarga,.pill.En.Recarga{background:var(--amber-bg);color:var(--amber-strong);}
+  .pill.Apto{background:var(--green-bg);color:var(--green-strong);}
+  .pill.Observado{background:var(--red-bg);color:var(--red-strong);}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--text-dim);}
+  .empty .icon{font-size:34px;margin-bottom:8px;}
+
+  .filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;}
+  .filters select{width:auto;flex-shrink:0;font-size:13px;padding:8px 10px;}
+
+  .toast{
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:var(--surface);border:1px solid var(--green);color:var(--text);
+    padding:11px 18px;border-radius:8px;font-size:14px;z-index:50;opacity:0;
+    transition:opacity .25s;pointer-events:none;box-shadow:0 2px 10px rgba(30,25,15,.12);
+  }
+  .toast.show{opacity:1;}
+  .toast.err{border-color:var(--red);}
+
+  .lst-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;}
+  table.lst{border-collapse:collapse;width:100%;min-width:980px;font-size:12px;}
+  table.lst th{
+    background:var(--surface-2);color:var(--text-dim);text-transform:uppercase;
+    font-size:9.5px;letter-spacing:.04em;padding:8px 7px;text-align:left;border:1px solid var(--border);
+    white-space:nowrap;
+  }
+  table.lst td{border:1px solid var(--border);padding:6px 7px;vertical-align:middle;}
+  table.lst td input,table.lst td select{
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    border-radius:5px;padding:6px 7px;font-size:12px;width:100%;min-width:90px;
+  }
+  table.lst td.codigo{font-family:'IBM Plex Mono';font-weight:600;white-space:nowrap;}
+
+  .insp-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;}
+  .insp-item .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .insp-item .fecha{font-family:'IBM Plex Mono';font-size:13px;font-weight:600;}
+  .insp-item .usuario{font-size:12px;color:var(--text-dim);margin-top:1px;}
+  .insp-item .items{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+  .insp-item .items span{font-size:10px;padding:3px 7px;border-radius:12px;background:var(--surface-2);color:var(--text-dim);}
+  .insp-item .items span.fail{background:var(--red-bg);color:var(--red-strong);}
+  .insp-item .obs{font-size:12px;color:var(--text-dim);margin-top:8px;font-style:italic;}
+
+  .hidden{display:none !important;}
+  .loading{text-align:center;padding:30px;color:var(--text-dim);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="role-gate" class="hidden">
+  <div class="gate-card">
+    <img src="logo-isl.png" alt="ISL" class="gate-logo" onerror="this.style.display='none'">
+    <div class="gate-title">ISL <span>Extintores</span></div>
+    <div class="gate-sub">¿Quién va a usar la app en este dispositivo?</div>
+    <button class="role-btn" data-role="admin">
+      <span class="rb-title">David · Administrador</span>
+      <span class="rb-desc">Alta de extintores, inventario, listado R-15.10</span>
+    </button>
+    <button class="role-btn" data-role="tecnico">
+      <span class="rb-title">Técnico</span>
+      <span class="rb-desc">Inspecciones y consulta de vencimientos</span>
+    </button>
+  </div>
+</div>
+
+<header class="top">
+  <div class="brand">
+    <img src="logo-isl.png" alt="ISL" class="logo" onerror="this.style.display='none'">
+    <div class="brand-text">
+      <div class="name">ISL <span>Extintores</span></div>
+      <small id="role-label">—</small>
+    </div>
+  </div>
+  <button id="btn-cambiar-rol" class="role-switch">Cambiar</button>
+</header>
+
+<div id="alert-banner" class="hidden"></div>
+
+
+
+<main id="app">
+  <!-- DASHBOARD -->
+  <section id="view-dashboard">
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="st-total">–</div><div class="l">Total</div></div>
+      <div class="stat"><div class="n" id="st-op">–</div><div class="l">Operativos</div></div>
+      <div class="stat red"><div class="n" id="st-alertas">–</div><div class="l">Alertas</div></div>
+    </div>
+    <div class="section-title">Vencimientos</div>
+    <div id="dash-alertas"><div class="loading">Cargando…</div></div>
+  </section>
+
+  <!-- INVENTARIO -->
+  <section id="view-inventario" class="hidden">
+    <div class="filters">
+      <select id="f-obra"><option value="">Todas las obras</option></select>
+      <select id="f-sector"><option value="">Todos los sectores</option></select>
+      <select id="f-estado">
+        <option value="">Todos los estados</option>
+        <option value="Operativo">Operativo</option>
+        <option value="En Recarga">En Recarga</option>
+        <option value="Baja">Baja</option>
+      </select>
+    </div>
+    <div id="inv-lista"><div class="loading">Cargando…</div></div>
+  </section>
+
+  <!-- NUEVA INSPECCIÓN -->
+  <section id="view-inspeccion" class="hidden">
+    <div class="card">
+      <label>Código de extintor</label>
+      <input type="text" id="insp-codigo" placeholder="Ej: EXT-014" autocomplete="off">
+      <div id="insp-extintor-info" style="font-size:13px;color:var(--text-dim);margin-top:6px;"></div>
+
+      <label>Vencimiento de carga</label>
+      <input type="month" id="insp-venc-carga">
+
+      <label>Vencimiento de prueba hidráulica</label>
+      <input type="month" id="insp-venc-prueba">
+
+      <label>Usuario</label>
+      <select id="insp-usuario"></select>
+
+      <div class="section-title" style="margin-top:20px;">Checklist</div>
+      <div id="insp-checklist"></div>
+
+      <label>Observaciones</label>
+      <textarea id="insp-obs" placeholder="Opcional"></textarea>
+
+      <button class="primary" id="btn-guardar-insp">Guardar inspección</button>
+    </div>
+  </section>
+
+  <!-- DETALLE EXTINTOR + HISTORIAL -->
+  <section id="view-detalle" class="hidden">
+    <button class="secondary" id="btn-volver-inv" style="margin-bottom:14px;">← Volver al inventario</button>
+    <div class="card" id="det-info"></div>
+    <div class="section-title">Historial de inspecciones</div>
+    <div id="det-historial"><div class="loading">Cargando…</div></div>
+  </section>
+
+  <!-- LISTADO DE VERIFICACION R-15.10 -->
+  <section id="view-listado" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div class="section-title" style="margin:0;">Listado de Verificación</div>
+        <span class="mono" style="font-size:11px;color:var(--text-dim);">R-15.10 Rev.0</span>
+      </div>
+
+      <label>Comitente</label>
+      <input type="text" id="lst-comitente" placeholder="Ej: YPF">
+
+      <label>Obra</label>
+      <select id="lst-obra"></select>
+
+      <label>Fecha</label>
+      <input type="date" id="lst-fecha">
+
+      <button class="secondary" id="btn-cargar-listado">Cargar extintores de la obra</button>
+    </div>
+
+    <div id="lst-tabla-wrap"></div>
+
+    <button class="primary hidden" id="btn-generar-pdf">Descargar PDF</button>
+  </section>
+
+  <!-- ALTA EXTINTOR -->
+  <section id="view-alta" class="hidden">
+    <div class="card">
+      <label>Código</label>
+      <input type="text" id="alta-codigo" placeholder="Ej: EXT-014">
+
+      <label>TAG ISL</label>
+      <input type="text" id="alta-tag" placeholder="Ej: ISL-0042">
+
+      <label>Número de serie</label>
+      <input type="text" id="alta-serie" placeholder="Ej: SN-88213">
+
+      <label>Marca</label>
+      <input type="text" id="alta-marca" placeholder="Ej: Drago">
+
+      <label>Tipo</label>
+      <select id="alta-tipo">
+        <option>PQS</option><option>CO2</option><option>Agua</option><option>Espuma AFFF</option>
+      </select>
+
+      <label>Capacidad</label>
+      <input type="text" id="alta-capacidad" placeholder="Ej: 5 kg">
+
+      <label>Obra</label>
+      <input type="text" id="alta-obra" placeholder="Ej: YPF San Lorenzo">
+
+      <label>Sector / Ubicación</label>
+      <input type="text" id="alta-sector" placeholder="Ej: Sala de Bombas">
+
+      <label>Fecha de fabricación <span style="font-weight:400;">(si no se ve, dejar en blanco)</span></label>
+      <input type="date" id="alta-fabricacion">
+
+      <label>Vencimiento de recarga</label>
+      <input type="month" id="alta-venc-recarga">
+
+      <label>Vencimiento de prueba hidráulica</label>
+      <input type="month" id="alta-venc-prueba">
+
+      <label>Responsable</label>
+      <input type="text" id="alta-responsable" placeholder="Nombre">
+
+      <button class="primary" id="btn-guardar-extintor">Registrar extintor</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-view="dashboard" class="active"><span class="icon">▲</span>Dashboard</button>
+  <button data-view="inventario"><span class="icon">▤</span>Inventario</button>
+  <button data-view="inspeccion"><span class="icon">✓</span>Inspección</button>
+  <button data-view="listado"><span class="icon">▦</span>Listado</button>
+  <button data-view="alta" data-role="admin"><span class="icon">+</span>Alta</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======= CONFIG ======= */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxxYUBpTrkO9Hsktbw0w1ZBRBETzVOEFtP6yLoBbDjI7H5fVGjFs8oeC1_jVBY_g34T/exec';
+
+/* ======= STATE ======= */
+let EXTINTORES = [];
+let USUARIOS = [];
+const CHECKLIST_ITEMS = [
+  ['Presion', 'Presión (manómetro en verde)'],
+  ['Precinto', 'Precinto / traba de seguridad'],
+  ['Manguera', 'Manguera / difusor'],
+  ['Senializacion', 'Señalización visible'],
+  ['AccesoLibre', 'Acceso libre / sin obstrucción'],
+  ['GolpesCorrosion', 'Sin golpes ni corrosión']
+];
+let checklistState = {};
+
+/* ======= API HELPER ======= */
+async function api(action, data = {}) {
+  const payload = encodeURIComponent(JSON.stringify({ action, data }));
+  const res = await fetch(`${API_URL}?payload=${payload}`);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Error desconocido');
+  return json.data;
+}
+
+function toast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ======= ROLES ======= */
+const ROLE_KEY = 'isl_ext_role';
+
+function initRole() {
+  const saved = localStorage.getItem(ROLE_KEY);
+  if (saved) {
+    applyRole(saved);
+  } else {
+    document.getElementById('role-gate').classList.remove('hidden');
+  }
+}
+
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const role = btn.dataset.role;
+    localStorage.setItem(ROLE_KEY, role);
+    document.getElementById('role-gate').classList.add('hidden');
+    applyRole(role);
+  });
+});
+
+document.getElementById('btn-cambiar-rol').addEventListener('click', () => {
+  document.getElementById('role-gate').classList.remove('hidden');
+});
+
+function applyRole(role) {
+  const label = document.getElementById('role-label');
+  label.textContent = role === 'admin' ? 'David · Administrador' : 'Técnico';
+  document.querySelectorAll('nav.tabs button[data-role]').forEach(btn => {
+    const allowed = btn.dataset.role === role;
+    btn.classList.toggle('hidden', !allowed);
+  });
+  // Si el rol actual no puede ver la vista activa, vamos al Dashboard
+  const activeBtn = document.querySelector('nav.tabs button.active');
+  if (activeBtn && activeBtn.classList.contains('hidden')) {
+    switchView('dashboard');
+  }
+}
+
+/* ======= BANNER GLOBAL DE ALERTAS ======= */
+let DASH_DATA = null;
+
+async function refreshAlertBanner() {
+  const banner = document.getElementById('alert-banner');
+  try {
+    DASH_DATA = await api('getDashboard');
+    const vencidos = DASH_DATA.alertas.filter(a => a.nivel === 'vencido').length;
+    const criticos = DASH_DATA.alertas.filter(a => a.nivel === 'critico').length;
+    const proximos = DASH_DATA.alertas.filter(a => a.nivel === 'proximo').length;
+
+    if (!vencidos && !criticos && !proximos) {
+      banner.classList.add('hidden');
+    } else {
+      const nivel = vencidos ? 'vencido' : 'critico';
+      const partes = [];
+      if (vencidos) partes.push(`${vencidos} vencido${vencidos > 1 ? 's' : ''}`);
+      if (criticos) partes.push(`${criticos} crítico${criticos > 1 ? 's' : ''} (≤15d)`);
+      if (proximos) partes.push(`${proximos} próximo${proximos > 1 ? 's' : ''} (≤30d)`);
+      banner.innerHTML = `<span>⚠ ${partes.join(' · ')}</span><span class="arrow">Ver →</span>`;
+      banner.classList.remove('hidden');
+      banner.className = nivel;
+      banner.onclick = () => switchView('dashboard');
+    }
+  } catch (err) {
+    // Sin conexión o error: no mostramos banner roto, solo lo ocultamos
+    banner.classList.add('hidden');
+  }
+}
+
+/* ======= NAV ======= */
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+function switchView(view) {
+  document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+  document.getElementById('view-' + view).classList.remove('hidden');
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'dashboard') loadDashboard();
+  if (view === 'inventario') loadInventario();
+  if (view === 'listado') initListado();
+}
+
+/* ======= DASHBOARD ======= */
+async function loadDashboard() {
+  try {
+    await refreshAlertBanner();
+    const d = DASH_DATA;
+    document.getElementById('st-total').textContent = d.totalExtintores;
+    document.getElementById('st-op').textContent = d.operativos;
+    document.getElementById('st-alertas').textContent = d.alertas.length;
+
+    const cont = document.getElementById('dash-alertas');
+    if (!d.alertas.length) {
+      cont.innerHTML = `<div class="empty"><div class="icon">✓</div>Sin vencimientos próximos.<br>Todo el parque está al día.</div>`;
+      return;
+    }
+    cont.innerHTML = d.alertas.map(a => {
+      const dias = Math.min(
+        a.diasRecarga ?? Infinity,
+        a.diasPrueba ?? Infinity
+      );
+      const diasTxt = dias === Infinity ? '–' : (dias < 0 ? `${Math.abs(dias)}d` : `${dias}d`);
+      const label = dias < 0 ? 'VENCIDO' : 'RESTAN';
+      const motivo = (a.diasRecarga !== null && a.diasRecarga <= (a.diasPrueba ?? Infinity)) ? 'Recarga' : 'Prueba hidr.';
+      return `
+        <div class="tag ${a.nivel}">
+          <div class="info">
+            <div class="codigo">${a.Codigo || '—'}</div>
+            <div class="loc">${a.Obra || ''} ${a.Sector ? '· ' + a.Sector : ''} · ${motivo}</div>
+          </div>
+          <div class="badge">${diasTxt}<small>${label}</small></div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    document.getElementById('dash-alertas').innerHTML = `<div class="empty">Error: ${err.message}</div>`;
+  }
+}
+
+/* ======= INVENTARIO ======= */
+async function loadInventario() {
+  const cont = document.getElementById('inv-lista');
+  try {
+    EXTINTORES = await api('getExtintores');
+    const obras = [...new Set(EXTINTORES.map(e => e.Obra).filter(Boolean))];
+    const fObra = document.getElementById('f-obra');
+    fObra.innerHTML = '<option value="">Todas las obras</option>' + obras.map(o => `<option value="${o}">${o}</option>`).join('');
+    populateSectores();
+    renderInventario();
+  } catch (err) {
+    cont.innerHTML = `<div class="empty">Error: ${err.message}</div>`;
+  }
+}
+
+function populateSectores() {
+  const fObra = document.getElementById('f-obra').value;
+  const fSector = document.getElementById('f-sector');
+  const actual = fSector.value;
+  const base = fObra ? EXTINTORES.filter(e => e.Obra === fObra) : EXTINTORES;
+  const sectores = [...new Set(base.map(e => e.Sector).filter(Boolean))];
+  fSector.innerHTML = '<option value="">Todos los sectores</option>' + sectores.map(s => `<option value="${s}">${s}</option>`).join('');
+  if (sectores.includes(actual)) fSector.value = actual;
+}
+
+function renderInventario() {
+  const cont = document.getElementById('inv-lista');
+  const fObra = document.getElementById('f-obra').value;
+  const fSector = document.getElementById('f-sector').value;
+  const fEstado = document.getElementById('f-estado').value;
+  let list = EXTINTORES.filter(e =>
+    (!fObra || e.Obra === fObra) && (!fSector || e.Sector === fSector) && (!fEstado || e.Estado === fEstado)
+  );
+  list.sort((a, b) => (a.Obra + (a.Sector || '')).localeCompare(b.Obra + (b.Sector || '')));
+  if (!list.length) {
+    cont.innerHTML = `<div class="empty"><div class="icon">▤</div>No hay extintores para este filtro.</div>`;
+    return;
+  }
+  cont.innerHTML = list.map(e => `
+    <div class="list-item" data-id="${e.ID}">
+      <div>
+        <div class="codigo">${e.Codigo || '—'}${e.TagISL ? ' · ' + e.TagISL : ''}</div>
+        <div class="meta">${e.Tipo || ''} · ${e.Capacidad || ''} · ${e.Obra || ''}${e.Sector ? ' / ' + e.Sector : ''}</div>
+      </div>
+      <span class="pill ${(e.Estado || '').replace(' ', '')}">${e.Estado || '—'}</span>
+    </div>
+  `).join('');
+
+  cont.querySelectorAll('.list-item').forEach(item => {
+    item.addEventListener('click', () => showDetalle(Number(item.dataset.id)));
+  });
+}
+
+document.getElementById('f-obra').addEventListener('change', () => { populateSectores(); renderInventario(); });
+document.getElementById('f-sector').addEventListener('change', renderInventario);
+document.getElementById('f-estado').addEventListener('change', renderInventario);
+
+/* ======= INSPECCIÓN ======= */
+function renderChecklist() {
+  checklistState = {};
+  document.getElementById('insp-checklist').innerHTML = CHECKLIST_ITEMS.map(([key, label]) => {
+    checklistState[key] = null;
+    return `
+      <div class="checklist-item">
+        <span class="lbl">${label}</span>
+        <div class="toggle" data-key="${key}">
+          <button type="button" data-val="OK">OK</button>
+          <button type="button" data-val="FALLA">Falla</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.querySelectorAll('#insp-checklist .toggle').forEach(group => {
+    group.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = group.dataset.key;
+        checklistState[key] = btn.dataset.val;
+        group.querySelectorAll('button').forEach(b => b.classList.remove('on-ok', 'on-fail'));
+        btn.classList.add(btn.dataset.val === 'OK' ? 'on-ok' : 'on-fail');
+      });
+    });
+  });
+}
+
+document.getElementById('insp-codigo').addEventListener('input', async (e) => {
+  const codigo = e.target.value.trim();
+  const info = document.getElementById('insp-extintor-info');
+  if (!EXTINTORES.length) EXTINTORES = await api('getExtintores').catch(() => []);
+  const found = EXTINTORES.find(ex => (ex.Codigo || '').toLowerCase() === codigo.toLowerCase());
+  info.textContent = found ? `${found.Tipo} · ${found.Obra} ${found.Sector ? '/ ' + found.Sector : ''}` : (codigo ? 'No encontrado en inventario' : '');
+  document.getElementById('insp-venc-carga').value = found ? (found.VencimientoRecarga || '') : '';
+  document.getElementById('insp-venc-prueba').value = found ? (found.VencimientoPruebaHidraulica || '') : '';
+});
+
+async function loadUsuariosSelect() {
+  try {
+    USUARIOS = await api('getUsuarios');
+    const sel = document.getElementById('insp-usuario');
+    sel.innerHTML = USUARIOS.length
+      ? USUARIOS.map(u => `<option value="${u.Nombre}">${u.Nombre}${u.Obra ? ' — ' + u.Obra : ''}</option>`).join('')
+      : '<option value="">Sin usuarios cargados</option>';
+  } catch (err) {
+    toast('No se pudieron cargar usuarios', true);
+  }
+}
+
+document.getElementById('btn-guardar-insp').addEventListener('click', async () => {
+  const codigo = document.getElementById('insp-codigo').value.trim();
+  if (!codigo) return toast('Ingresá el código del extintor', true);
+  const extintor = EXTINTORES.find(ex => (ex.Codigo || '').toLowerCase() === codigo.toLowerCase());
+  const pendientes = Object.values(checklistState).some(v => v === null);
+  if (pendientes) return toast('Completá todos los ítems del checklist', true);
+
+  const fallas = Object.values(checklistState).filter(v => v === 'FALLA').length;
+  const estadoGeneral = fallas === 0 ? 'Apto' : 'Observado';
+
+  const btn = document.getElementById('btn-guardar-insp');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    await api('addInspeccion', {
+      ExtintorID: extintor ? extintor.ID : '',
+      Codigo: codigo,
+      Usuario: document.getElementById('insp-usuario').value,
+      Obra: extintor ? extintor.Obra : '',
+      ...checklistState,
+      EstadoGeneral: estadoGeneral,
+      Observaciones: document.getElementById('insp-obs').value,
+      VencimientoRecarga: document.getElementById('insp-venc-carga').value,
+      VencimientoPruebaHidraulica: document.getElementById('insp-venc-prueba').value
+    });
+    toast('Inspección guardada ✓');
+    document.getElementById('insp-codigo').value = '';
+    document.getElementById('insp-obs').value = '';
+    document.getElementById('insp-extintor-info').textContent = '';
+    document.getElementById('insp-venc-carga').value = '';
+    document.getElementById('insp-venc-prueba').value = '';
+    renderChecklist();
+    EXTINTORES = await api('getExtintores').catch(() => EXTINTORES);
+    refreshAlertBanner();
+  } catch (err) {
+    toast('Error: ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar inspección';
+  }
+});
+
+/* ======= ALTA EXTINTOR ======= */
+document.getElementById('btn-guardar-extintor').addEventListener('click', async () => {
+  const codigo = document.getElementById('alta-codigo').value.trim();
+  if (!codigo) return toast('Ingresá un código', true);
+
+  const btn = document.getElementById('btn-guardar-extintor');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    await api('addExtintor', {
+      Codigo: codigo,
+      TagISL: document.getElementById('alta-tag').value,
+      NumeroSerie: document.getElementById('alta-serie').value,
+      Marca: document.getElementById('alta-marca').value,
+      Tipo: document.getElementById('alta-tipo').value,
+      Capacidad: document.getElementById('alta-capacidad').value,
+      Obra: document.getElementById('alta-obra').value,
+      Sector: document.getElementById('alta-sector').value,
+      FechaFabricacion: document.getElementById('alta-fabricacion').value,
+      VencimientoRecarga: document.getElementById('alta-venc-recarga').value,
+      VencimientoPruebaHidraulica: document.getElementById('alta-venc-prueba').value,
+      Responsable: document.getElementById('alta-responsable').value,
+      Estado: 'Operativo'
+    });
+    toast('Extintor registrado ✓');
+    document.querySelectorAll('#view-alta input').forEach(i => i.value = '');
+    EXTINTORES = await api('getExtintores');
+  } catch (err) {
+    toast('Error: ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Registrar extintor';
+  }
+});
+
+/* ======= DETALLE + HISTORIAL ======= */
+function switchToDetalle() {
+  document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+  document.getElementById('view-detalle').classList.remove('hidden');
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+}
+
+async function showDetalle(id) {
+  switchToDetalle();
+  const ex = EXTINTORES.find(e => Number(e.ID) === id);
+  const info = document.getElementById('det-info');
+  const hist = document.getElementById('det-historial');
+
+  if (!ex) {
+    info.innerHTML = '<div class="empty">Extintor no encontrado.</div>';
+    hist.innerHTML = '';
+    return;
+  }
+
+  info.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div class="codigo mono" style="font-size:18px;font-weight:600;">${ex.Codigo || '—'}</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:3px;">${ex.Marca || ''} · ${ex.Tipo || ''} · ${ex.Capacidad || ''}</div>
+      </div>
+      <span class="pill ${(ex.Estado || '').replace(' ', '')}">${ex.Estado || '—'}</span>
+    </div>
+    <div style="margin-top:12px;font-size:13px;line-height:1.9;">
+      <div><strong>TAG ISL:</strong> ${ex.TagISL || '—'} · <strong>N° Serie:</strong> ${ex.NumeroSerie || '—'}</div>
+      <div><strong>Obra:</strong> ${ex.Obra || '—'} ${ex.Sector ? '/ ' + ex.Sector : ''}</div>
+      <div><strong>Vencimiento recarga:</strong> ${ex.VencimientoRecarga || '—'}</div>
+      <div><strong>Vencimiento prueba hidráulica:</strong> ${ex.VencimientoPruebaHidraulica || '—'}</div>
+      <div><strong>Responsable:</strong> ${ex.Responsable || '—'}</div>
+    </div>`;
+
+  hist.innerHTML = '<div class="loading">Cargando historial…</div>';
+  try {
+    const inspecciones = await api('getInspecciones', { extintorId: id });
+    if (!inspecciones.length) {
+      hist.innerHTML = `<div class="empty"><div class="icon">✓</div>Todavía no tiene inspecciones registradas.</div>`;
+      return;
+    }
+    inspecciones.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+    hist.innerHTML = inspecciones.map(i => {
+      const items = CHECKLIST_ITEMS.map(([key, label]) => {
+        const val = i[key];
+        const fail = val === 'FALLA';
+        return `<span class="${fail ? 'fail' : ''}">${label}${fail ? ' ✕' : ' ✓'}</span>`;
+      }).join('');
+      return `
+        <div class="insp-item">
+          <div class="row1">
+            <div>
+              <div class="fecha">${i.Fecha || '—'}</div>
+              <div class="usuario">${i.Usuario || 'Sin usuario'}</div>
+            </div>
+            <span class="pill ${(i.EstadoGeneral || '').replace(' ', '')}">${i.EstadoGeneral || '—'}</span>
+          </div>
+          <div class="items">${items}</div>
+          ${(i.VencimientoRecarga || i.VencimientoPruebaHidraulica) ? `<div class="obs" style="font-style:normal;">Venc. carga: ${i.VencimientoRecarga || '—'} · Venc. prueba hidr.: ${i.VencimientoPruebaHidraulica || '—'}</div>` : ''}
+          ${i.Observaciones ? `<div class="obs">"${i.Observaciones}"</div>` : ''}
+        </div>`;
+    }).join('');
+  } catch (err) {
+    hist.innerHTML = `<div class="empty">Error: ${err.message}</div>`;
+  }
+}
+
+document.getElementById('btn-volver-inv').addEventListener('click', () => switchView('inventario'));
+
+/* ======= LISTADO R-15.10 ======= */
+let listadoRows = [];
+
+async function initListado() {
+  const fechaInput = document.getElementById('lst-fecha');
+  if (!fechaInput.value) fechaInput.value = new Date().toISOString().slice(0, 10);
+
+  if (!EXTINTORES.length) {
+    try { EXTINTORES = await api('getExtintores'); } catch (err) { toast('Error: ' + err.message, true); }
+  }
+  const obras = [...new Set(EXTINTORES.map(e => e.Obra).filter(Boolean))];
+  const sel = document.getElementById('lst-obra');
+  sel.innerHTML = obras.length
+    ? obras.map(o => `<option value="${o}">${o}</option>`).join('')
+    : '<option value="">Sin obras cargadas</option>';
+}
+
+document.getElementById('btn-cargar-listado').addEventListener('click', () => {
+  const obra = document.getElementById('lst-obra').value;
+  const items = EXTINTORES.filter(e => e.Obra === obra);
+  const wrap = document.getElementById('lst-tabla-wrap');
+  const pdfBtn = document.getElementById('btn-generar-pdf');
+
+  if (!items.length) {
+    wrap.innerHTML = `<div class="empty"><div class="icon">▦</div>No hay extintores registrados en esa obra.</div>`;
+    pdfBtn.classList.add('hidden');
+    listadoRows = [];
+    return;
+  }
+
+  listadoRows = items.map(e => ({
+    id: e.ID,
+    tag: e.TagISL || '',
+    serie: e.NumeroSerie || '',
+    marca: e.Marca || '',
+    tipoCapacidad: `${e.Tipo || ''} ${e.Capacidad || ''}`.trim(),
+    fechaCarga: '',
+    vencCarga: e.VencimientoRecarga || '',
+    vencPrueba: e.VencimientoPruebaHidraulica || '',
+    reparacion: '',
+    estadoAceptable: 'Sí',
+    ubicacion: e.Sector || ''
+  }));
+
+  wrap.innerHTML = `
+    <div class="lst-scroll">
+      <table class="lst">
+        <thead><tr>
+          <th>TAG ISL</th><th>N° Serie</th><th>Marca</th><th>Tipo de carga y capacidad</th>
+          <th>Fecha de carga</th><th>Venc. carga</th><th>Venc. prueba hidr.</th>
+          <th>Reparación efectuada</th><th>Estado aceptable</th><th>Ubicación del extintor</th>
+        </tr></thead>
+        <tbody>
+          ${listadoRows.map((r, i) => `
+            <tr>
+              <td class="codigo">${r.tag || '—'}</td>
+              <td class="codigo">${r.serie || '—'}</td>
+              <td>${r.marca || '—'}</td>
+              <td>${r.tipoCapacidad || '—'}</td>
+              <td><input type="date" data-i="${i}" data-f="fechaCarga"></td>
+              <td>${r.vencCarga || '—'}</td>
+              <td>${r.vencPrueba || '—'}</td>
+              <td><input type="text" data-i="${i}" data-f="reparacion" placeholder="Ninguna"></td>
+              <td>
+                <select data-i="${i}" data-f="estadoAceptable">
+                  <option value="Sí" selected>Sí</option>
+                  <option value="No">No</option>
+                </select>
+              </td>
+              <td><input type="text" data-i="${i}" data-f="ubicacion" value="${r.ubicacion}"></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  wrap.querySelectorAll('input,select').forEach(el => {
+    el.addEventListener('input', () => {
+      listadoRows[Number(el.dataset.i)][el.dataset.f] = el.value;
+    });
+  });
+
+  pdfBtn.classList.remove('hidden');
+});
+
+document.getElementById('btn-generar-pdf').addEventListener('click', () => {
+  if (!listadoRows.length) return toast('Cargá primero los extintores de la obra', true);
+  if (typeof window.jspdf === 'undefined') return toast('No se pudo cargar el generador de PDF', true);
+
+  const comitente = document.getElementById('lst-comitente').value || '—';
+  const obra = document.getElementById('lst-obra').value || '—';
+  const fecha = document.getElementById('lst-fecha').value || '—';
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('LISTADO DE VERIFICACIÓN', 14, 15);
+  doc.setFontSize(11);
+  doc.text('EXTINTORES', 14, 21);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('R-15.10 Rev.0', 283, 15, { align: 'right' });
+
+  doc.setFontSize(10);
+  doc.text(`Comitente: ${comitente}`, 14, 30);
+  doc.text(`Obra: ${obra}`, 120, 30);
+  doc.text(`Fecha: ${fecha}`, 230, 30);
+
+  doc.autoTable({
+    startY: 36,
+    head: [['TAG ISL', 'N° Serie', 'Marca', 'Tipo de carga y capacidad', 'Fecha de carga', 'Venc. carga', 'Venc. prueba hidr.', 'Reparación efectuada', 'Estado aceptable', 'Ubicación del extintor']],
+    body: listadoRows.map(r => [
+      r.tag || '—', r.serie || '—', r.marca || '—', r.tipoCapacidad || '—',
+      r.fechaCarga || '—', r.vencCarga || '—', r.vencPrueba || '—',
+      r.reparacion || 'Ninguna', r.estadoAceptable, r.ubicacion || '—'
+    ]),
+    styles: { fontSize: 7.5, cellPadding: 2, lineColor: [60, 60, 60], lineWidth: 0.1 },
+    headStyles: { fillColor: [200, 30, 44], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+    theme: 'grid'
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 25;
+  if (finalY > 190) finalY = 190;
+  doc.setFontSize(10);
+  doc.text('Firma Técnico Seguridad: _____________________________', 14, finalY);
+  doc.text('Aclaración: _____________________________', 14, finalY + 12);
+
+  doc.save(`Listado_Extintores_${obra.replace(/\s+/g, '_')}_${fecha}.pdf`);
+});
+
+/* ======= INIT ======= */
+renderChecklist();
+loadUsuariosSelect();
+initRole();
+loadDashboard();
+</script>
+</body>
+</html>
